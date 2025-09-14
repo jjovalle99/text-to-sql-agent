@@ -1,0 +1,125 @@
+name: CD
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: true  
+
+env:
+  PROJECT_ID: ${{secrets.PROJECT_ID}}
+  REGION: ${{secrets.REGION}}
+  AR_REPOSITORY: ${{secrets.AR_REPOSITORY}}
+  CLOUD_SQL_INSTANCES: ${{ secrets.CLOUD_SQL_INSTANCES }}
+  SERVICE: text-to-sql
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+        contents: read
+        id-token: write
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        
+        - name: Authenticate with Google Cloud
+          id: auth
+          uses: google-github-actions/auth@v2
+          with:
+            token_format: access_token
+            project_id: ${{ env.PROJECT_ID }}
+            service_account: ${{secrets.SERVICE_ACCOUNT}}
+            workload_identity_provider: ${{secrets.WORKLOAD_IDENTITY_PROVIDER}}
+
+        - name: Docker Auth
+          uses: docker/login-action@v3
+          with:
+            registry: ${{ env.REGION }}-docker.pkg.dev
+            username: oauth2accesstoken
+            password: ${{ steps.auth.outputs.access_token }}
+
+        - name: Build and Push Container
+          id: build
+          run: |-
+            IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
+            docker build -t ${IMAGE_URL} .
+            docker push ${IMAGE_URL}
+            echo "image-url=${IMAGE_URL}" >> $GITHUB_OUTPUT
+
+        - name: Deploy to Cloud Run
+          id: deploy
+          uses: google-github-actions/deploy-cloudrun@v2
+          with:
+            service: ${{ env.SERVICE }}
+            region: ${{ env.REGION }}
+            image: ${{ steps.build.outputs.image-url }}
+            flags: |
+              --allow-unauthenticated 
+              --port 8000 
+              --add-cloudsql-instances ${{ env.CLOUD_SQL_INSTANCES }}
+              --min 1
+              --service-account ${{ secrets.SERVICE_ACCOUNT }}
+            secrets: |
+              DB__HOST=DB__HOST:1
+              DB__PORT=DB__PORT:1
+              DB__DATABASE=DB__DATABASE:1
+              DB__USER=DB__USER:1
+              DB__PASSWORD=DB__PASSWORD:1
+              DB__SCHEMA_NAME=DB__SCHEMA_NAME:2
+              LANGSMITH_TRACING=LANGSMITH_TRACING:1
+              LANGSMITH_ENDPOINT=LANGSMITH_ENDPOINT:1
+              LANGSMITH_API_KEY=LANGSMITH_API_KEY:1
+              LANGSMITH_PROJECT=LANGSMITH_PROJECT:2
+              ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:1
+
+        - name: Verify Deployment with a Smoke Test
+          run: |
+            URL=${{ steps.deploy.outputs.url }}
+            echo "Newly deployed URL is ${URL}"
+            sleep 5
+            curl --fail --silent --show-error ${URL}/v1/api/health/liveness
+
+  report-status:
+    if: always() 
+    needs: [deploy] 
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write 
+    steps:
+      - name: Report deployment status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let status = '${{ needs.deploy.result }}';
+            let state;
+            let description;
+
+            if (status === 'success') {
+              state = 'success';
+              description = 'Deployment to Cloud Run succeeded.';
+            } else if (status === 'failure') {
+              state = 'failure';
+              description = 'Deployment to Cloud Run failed.';
+            } else {
+              state = 'error';
+              description = 'Deployment status is unknown.';
+            }
+            
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ github.event.workflow_run.head_sha }}',
+              state: state,
+              description: description,
+              // This is the name that will appear in the UI checks
+              context: 'CD / Cloud Run Deploy'
+            });
