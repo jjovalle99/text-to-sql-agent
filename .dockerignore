@@ -1,0 +1,85 @@
+# =============================================================================
+# PYTHON RUNTIME & BUILD ARTIFACTS
+# =============================================================================
+__pycache__/
+*.py[oc]
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info
+
+# =============================================================================
+# DEVELOPMENT ENVIRONMENT
+# =============================================================================
+# Virtual environments
+.venv
+venv/
+env/
+
+# Environment variables & secrets
+.env
+.env.*
+
+# Python version management
+.python-version
+
+# =============================================================================
+# DEVELOPMENT TOOLS & CACHES
+# =============================================================================
+# Type checking & linting
+.mypy_cache/
+.ruff_cache/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# =============================================================================
+# VERSION CONTROL & DOCUMENTATION
+# =============================================================================
+.git/
+.gitignore
+*.md
+README*
+CHANGELOG*
+LICENSE*
+
+# =============================================================================
+# BUILD & DEPLOYMENT
+# =============================================================================
+Dockerfile*
+.dockerignore
+Makefile
+docker-compose*.yml
+
+# =============================================================================
+# PROJECT-SPECIFIC CUSTOM IGNORES
+# =============================================================================
+# Add custom files and directories specific to this project below:
+# Examples:
+*.ipynb          # Jupyter notebooks
+# docs/            # Documentation directory
+# data/            # Data files
+# logs/            # Log files
+# temp/            # Temporary files
+scripts/         # Development scripts
+*.csv

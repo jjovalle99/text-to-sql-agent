@@ -1,0 +1,45 @@
+name: CI
+on:
+    push:
+        branches: [ main ]
+    pull_request:
+        branches: [ main ]
+jobs:
+    code-quality:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup uv
+              uses: astral-sh/setup-uv@v5
+              with:
+                version: 0.7.13
+                enable-cache: true
+                cache-dependency-glob: uv.lock
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                python-version-file: .python-version
+
+            - name: Install dependencies
+              run: |
+                uv sync \
+                  --frozen \
+                  --no-install-project \
+                  --no-dev \
+                  --group lint \
+                  --group test
+
+            - name: Check linting
+              run: uv run ruff check .
+            
+            - name: Check formatting
+              run: uv run ruff format --check .
+
+            - name: Verify lockfile
+              run: uv lock --check
+            
+            - name: Type check
+              run: uv run mypy .
