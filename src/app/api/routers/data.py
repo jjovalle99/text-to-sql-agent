@@ -6,6 +6,7 @@ from typing import Annotated, Any
 import duckdb
 from fastapi import APIRouter, Depends, UploadFile, status
 from fastapi.encoders import jsonable_encoder
+from loguru import logger
 from nanoid import generate
 
 from ..dependencies import get_duckdb_connection
@@ -81,3 +82,79 @@ async def upload_dataset(
             "tables_schema_xml": schemas_to_xml_str({"schemas": schemas}),
         }
     )
+
+
+@router.get("/tables")
+async def list_tables(
+    duck_db_conn: Annotated[
+        duckdb.DuckDBPyConnection, Depends(get_duckdb_connection)
+    ],
+):
+    tables_info = duck_db_conn.execute("""
+        SELECT 
+            table_name,
+            estimated_size,
+            column_count
+        FROM duckdb_tables()
+        WHERE NOT starts_with(table_name, 'duckdb_')
+        ORDER BY estimated_size DESC
+    """).fetchall()
+
+    tables = []
+    for table in tables_info:
+        tables.append(
+            {
+                "name": table[0],
+                "rows": table[1],
+                "columns": table[2],
+            }
+        )
+    return jsonable_encoder(
+        {
+            "tables": tables,
+            "total_tables": len(tables),
+        }
+    )
+
+
+@router.delete("/tables/{table_name}")
+async def drop_table(
+    table_name: str,
+    duck_db_conn: Annotated[
+        duckdb.DuckDBPyConnection, Depends(get_duckdb_connection)
+    ],
+):
+    try:
+        duck_db_conn.execute(f"DROP TABLE {table_name}")
+
+        return {
+            "status": "success",
+            "message": f"Table '{table_name}' dropped successfully",
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.delete("/tables")
+async def clear_all_tables(
+    duck_db_conn: Annotated[
+        duckdb.DuckDBPyConnection, Depends(get_duckdb_connection)
+    ],
+):
+    tables = duck_db_conn.execute("SHOW TABLES").fetchall()
+
+    dropped = []
+    for (table_name,) in tables:
+        try:
+            duck_db_conn.execute(f"DROP TABLE {table_name}")
+            dropped.append(table_name)
+        except Exception as e:
+            logger.error(f"Error dropping table {table_name}: {e}")
+            pass
+
+    return {
+        "status": "success",
+        "dropped_tables": dropped,
+        "count": len(dropped),
+    }
