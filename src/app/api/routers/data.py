@@ -16,7 +16,7 @@ router = APIRouter(tags=["data"])
 def make_safe_table_name(raw: str) -> str:
     base = raw.removesuffix(".csv")
     safe = re.sub(r"[^A-Za-z0-9_]", "_", base)
-    final_name = f"{generate(alphabet="_abcdefghijklmnopqrst", size=4).lower()}_{safe.lower()}"
+    final_name = f"{generate(alphabet='_abcdefghijklmnopqrst', size=4).lower()}_{safe.lower()}"
     return final_name
 
 
@@ -74,8 +74,10 @@ async def upload_dataset(
         schema = [{c[1]: c[2]} for c in cols]
         schemas.append({"table_name": table_name, "schema": schema})
 
-    return jsonable_encoder({
-        "status": "success",
-        "tables": [file.filename for file in files],
-        "tables_schema_xml": schemas_to_xml_str({"schemas": schemas})
-    })
+    return jsonable_encoder(
+        {
+            "status": "success",
+            "tables": [file.filename for file in files],
+            "tables_schema_xml": schemas_to_xml_str({"schemas": schemas}),
+        }
+    )

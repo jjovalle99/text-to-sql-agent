@@ -25,6 +25,7 @@ async def get_graph(request: HTTPConnection) -> CompiledStateGraph:
 async def get_prompt_store(request: HTTPConnection) -> PromptStore:
     return request.state.prompt_store
 
+
 async def get_duckdb_connection(
     request: HTTPConnection,
 ) -> duckdb.DuckDBPyConnection:
