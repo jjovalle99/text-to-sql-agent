@@ -67,6 +67,8 @@ jobs:
               --add-cloudsql-instances ${{ env.CLOUD_SQL_INSTANCES }}
               --min 1
               --service-account ${{ secrets.SERVICE_ACCOUNT }}
+              --cpu=1 \
+              --memory=1Gi
             secrets: |
               DB__HOST=DB__HOST:1
               DB__PORT=DB__PORT:1
