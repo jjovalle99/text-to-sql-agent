@@ -12,7 +12,7 @@ This repository contains the backend implementation of a Text2SQL agent using La
 
 Ideally, this agent will be connected to a enterprise data warehouse with read-only access. However, for demonstration purposes we can not expose any company data. Therefore, we enable users that want to test the agent to use data in .csv files. You can use as many .csv files as you want. The agent will read the files, infer the schema and persist them in a DuckDB database.
 
-You can check the demo at [https://sql-chatbot-nu.vercel.app/](https://sql-chatbot-nu.vercel.app/).
+You can check the demo at [https://sql-chatbot-nu.vercel.app/](https://sql-chatbot-nu.vercel.app/)
 
 **If you are interested in the frontend code, please visit the following repository: [https://github.com/jovalle02/sql-chatbot](https://github.com/jovalle02/sql-chatbot)**
 
@@ -57,7 +57,6 @@ LANGSMITH_PROJECT=
 
 # Anthropic
 ANTHROPIC_API_KEY=
-ANTHROPIC_API_KEY=fillme
 ```
 
 3. **Create the database schema and checkpointer tables**
